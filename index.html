@@ -107,29 +107,37 @@
         function getAuthHeaders() { return { 'Authorization': `Bearer ${localStorage.getItem('clientToken')}`, 'Content-Type': 'application/json' }; }
         
         // Image Compressor to prevent Vercel/MongoDB crashes
-        function fileToBase64(file) {
-            return new Promise((resolve) => {
-                if (!file) return resolve(null);
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = (event) => {
-                    const img = new Image();
-                    img.src = event.target.result;
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 800;
-                        let width = img.width;
-                        let height = img.height;
-                        if (width > MAX_WIDTH) { height = height * (MAX_WIDTH / width); width = MAX_WIDTH; }
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        resolve(canvas.toDataURL('image/jpeg', 0.7));
-                    };
-                };
-            });
-        }
+       
+       // --- SUPER COMPRESSOR FOR VERCEL ---
+function fileToBase64(file) {
+    return new Promise((resolve) => {
+        if (!file) return resolve(null);
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                // Squish the image down to 500px wide to easily pass Vercel's 4.5MB limit
+                const MAX_WIDTH = 500; 
+                let width = img.width;
+                let height = img.height;
+                if (width > MAX_WIDTH) { 
+                    height = height * (MAX_WIDTH / width); 
+                    width = MAX_WIDTH; 
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Compress to 50% quality (still looks great on phones, but file size is tiny!)
+                resolve(canvas.toDataURL('image/jpeg', 0.5)); 
+            };
+        };
+    });
+}
 
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
