@@ -5,13 +5,12 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '100mb' })); // Allows compressed photo uploads
+app.use(express.json({ limit: '100mb' })); 
 
 const ADMIN_USER = 'admin';
 const ADMIN_PASS = 'worldclass123';
 const SECRET_KEY = 'super_secret_matrimony_key';
 
-// Vercel Environment Variable for MongoDB
 const DB_URL = process.env.MONGODB_URI || 'mongodb://localhost:27017/matrimonyMVP';
 
 mongoose.connect(DB_URL)
@@ -43,11 +42,10 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-// --- CLIENT ROUTES ---
 app.post('/api/client/register', async (req, res) => {
   try {
-    if (!req.body.photos || req.body.photos.length < 3 || req.body.photos.length > 4) {
-      return res.status(400).json({ error: 'Please upload exactly 3 to 4 photos.' });
+    if (!req.body.photos || req.body.photos.length === 0) {
+      return res.status(400).json({ error: 'Please upload a profile photo.' });
     }
     await new User(req.body).save();
     res.status(201).json({ message: 'Registration successful! Your profile is pending Admin approval.' });
@@ -69,7 +67,6 @@ app.get('/api/client/matches', verifyToken, async (req, res) => {
     const loggedInUser = await User.findById(req.user.id);
     const allApproved = await User.find({ isApproved: true });
     
-    // 🔥 Opposite gender match filtering
     const oppositeGenderMatches = allApproved.filter(u => 
       u.gender !== loggedInUser.gender && u._id.toString() !== req.user.id
     );
@@ -77,8 +74,7 @@ app.get('/api/client/matches', verifyToken, async (req, res) => {
     const matches = oppositeGenderMatches.map(u => ({
         _id: u._id, name: u.name, dob: u.dob, gender: u.gender, city: u.city, biodata: u.biodata,
         phone: req.user.isPremium ? u.phone : 'Upgrade to Premium to view',
-        photos: req.user.isPremium ? u.photos : (u.photos.length > 0 ? [u.photos[0]] : []),
-        totalPhotos: u.photos.length
+        photos: u.photos.length > 0 ? [u.photos[0]] : []
     }));
     res.status(200).json(matches);
   } catch (error) { res.status(500).json({ error: 'Failed to fetch matches.' }); }
@@ -93,13 +89,12 @@ app.put('/api/client/profile', verifyToken, async (req, res) => {
   try {
     const { name, dob, gender, city, phone, biodata, photos } = req.body;
     const updateData = { name, dob, gender, city, phone, biodata };
-    if (photos && photos.length >= 3 && photos.length <= 4) { updateData.photos = photos; }
+    if (photos && photos.length > 0) { updateData.photos = photos; }
     await User.findByIdAndUpdate(req.user.id, updateData);
     res.status(200).json({ message: 'Profile updated successfully!' });
   } catch (error) { res.status(500).json({ error: 'Failed to update profile.' }); }
 });
 
-// --- ADMIN ROUTES ---
 app.post('/api/admin/login', (req, res) => {
   if (req.body.username === ADMIN_USER && req.body.password === ADMIN_PASS) {
     res.json({ token: jwt.sign({ role: 'admin' }, SECRET_KEY, { expiresIn: '12h' }) });
@@ -125,5 +120,4 @@ app.delete('/api/admin/users/:id', verifyToken, async (req, res) => {
   res.status(200).json({ message: 'User Deleted' });
 });
 
-// REQUIRED FOR VERCEL
 module.exports = app;
