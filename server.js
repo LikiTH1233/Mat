@@ -49,7 +49,11 @@ app.post('/api/client/register', async (req, res) => {
     }
     await new User(req.body).save();
     res.status(201).json({ message: 'Registration successful! Your profile is pending Admin approval.' });
-  } catch (error) { res.status(500).json({ error: 'Username taken or data too large.' }); }
+  } catch (error) { 
+    console.error("🔥 ACTUAL SERVER ERROR:", error);
+    // This will print the real error directly to your browser alert box!
+    res.status(500).json({ error: 'REAL ERROR: ' + error.message }); 
+  }
 });
 
 app.post('/api/client/login', async (req, res) => {
