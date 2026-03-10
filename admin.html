@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eternity Admin Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style> body { background-color: #0f172a; } </style>
+</head>
+<body class="text-slate-200 min-h-screen flex flex-col items-center justify-center p-6">
+
+    <div id="loginScreen" class="bg-slate-800 p-8 rounded-2xl border border-slate-700 w-full max-w-md shadow-2xl">
+        <h2 class="text-3xl font-bold mb-6 text-center text-white">Admin Access</h2>
+        <input type="text" id="username" placeholder="Admin Username" class="w-full p-4 mb-4 rounded-lg bg-slate-900 border border-slate-700 focus:border-emerald-500 text-white outline-none">
+        <input type="password" id="password" placeholder="Password" class="w-full p-4 mb-6 rounded-lg bg-slate-900 border border-slate-700 focus:border-emerald-500 text-white outline-none">
+        <button onclick="login()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-lg transition shadow-lg text-lg">Enter Dashboard</button>
+    </div>
+
+    <div id="dashboardScreen" class="hidden w-full max-w-7xl">
+        <div class="flex justify-between items-end mb-6 bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+            <div>
+                <h2 class="text-3xl font-bold text-white">Super Admin Dashboard</h2>
+                <p class="text-slate-400 text-sm mt-1">Manage user approvals, premium billing status, and platform safety.</p>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="loadAllUsers()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg transition font-bold shadow flex items-center gap-2">🔄 Refresh Data</button>
+                <button onclick="logout()" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-lg transition font-bold shadow">Logout</button>
+            </div>
+        </div>
+        
+        <div class="bg-slate-800 rounded-xl overflow-x-auto border border-slate-700 shadow-2xl">
+            <table class="w-full text-left text-sm whitespace-nowrap">
+                <thead class="bg-slate-900 text-slate-300">
+                    <tr>
+                        <th class="p-4 font-semibold border-b border-slate-700">Client Login</th>
+                        <th class="p-4 font-semibold border-b border-slate-700">Personal Info</th>
+                        <th class="p-4 font-semibold border-b border-slate-700">Contact / Media</th>
+                        <th class="p-4 font-semibold border-b border-slate-700 text-center">Current Status</th>
+                        <th class="p-4 font-semibold border-b border-slate-700 text-center">Admin Controls</th>
+                    </tr>
+                </thead>
+                <tbody id="adminTableBody" class="divide-y divide-slate-700"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        if (localStorage.getItem('adminToken')) showDashboard();
+
+        async function login() {
+            const res = await fetch('/api/admin/login', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: document.getElementById('username').value, password: document.getElementById('password').value })
+            });
+            const data = await res.json();
+            if (res.ok) { localStorage.setItem('adminToken', data.token); showDashboard(); } 
+            else { alert('❌ ' + data.error); }
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('dashboardScreen').classList.add('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        function showDashboard() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('dashboardScreen').classList.remove('hidden');
+            loadAllUsers();
+        }
+
+        function getAuthHeaders() { return { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}`, 'Content-Type': 'application/json' }; }
+
+        async function loadAllUsers() {
+            const res = await fetch('/api/admin/users', { headers: getAuthHeaders() });
+            if (res.status === 401 || res.status === 403) { alert("Session Expired"); return logout(); }
+            
+            const users = await res.json();
+            document.getElementById('adminTableBody').innerHTML = users.map(u => {
+                const premiumBtn = u.isPremium 
+                    ? `<button onclick="togglePremium('${u._id}', false)" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-2 rounded text-xs font-bold transition w-full shadow border border-orange-700">Revoke Premium</button>`
+                    : `<button onclick="togglePremium('${u._id}', true)" class="bg-yellow-500 hover:bg-yellow-400 text-yellow-900 px-3 py-2 rounded text-xs font-bold transition w-full shadow border border-yellow-600">Grant Premium</button>`;
+
+                return `
+                <tr class="hover:bg-slate-700/60 transition duration-150">
+                    <td class="p-4">
+                        <strong class="text-blue-400 text-base">${u.username}</strong><br>
+                        <span class="text-xs text-slate-500 font-mono mt-1 inline-block bg-slate-900 px-2 py-1 rounded">PW: ${u.password}</span>
+                    </td>
+                    <td class="p-4">
+                        <strong class="text-white text-base">${u.name}</strong><br>
+                        <span class="text-slate-400">DOB: ${u.dob}</span><br>
+                        <span class="text-slate-400 text-xs">${u.gender} • ${u.city}</span>
+                    </td>
+                    <td class="p-4">
+                        <span class="text-slate-200 bg-slate-900 px-2 py-1 rounded text-xs border border-slate-700 inline-block mb-1">📞 ${u.phone}</span><br>
+                        <span class="text-xs text-emerald-400 font-bold">🖼️ ${u.photos?.length || 0}/4 Photos Valid</span>
+                    </td>
+                    <td class="p-4 text-center">
+                        <div class="flex flex-col gap-1 items-center">
+                            ${u.isApproved ? '<span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-500/30">Site Apprvd</span>' : '<span class="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-xs font-bold border border-red-500/30">Pending</span>'}
+                            ${u.isPremium ? '<span class="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-xs font-bold border border-yellow-500/30">Premium VIP</span>' : '<span class="bg-slate-500/20 text-slate-400 px-3 py-1 rounded-full text-xs font-bold border border-slate-500/30">Free Tier</span>'}
+                        </div>
+                    </td>
+                    <td class="p-4">
+                        <div class="flex flex-col gap-2 w-36 mx-auto">
+                            ${!u.isApproved ? `<button onclick="approveUser('${u._id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded text-xs font-bold transition w-full shadow border border-emerald-700">Approve Access</button>` : ''}
+                            ${premiumBtn}
+                            <button onclick="deleteUser('${u._id}')" class="bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded text-xs font-bold transition w-full shadow mt-2 border border-red-700">Delete Profile</button>
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        async function approveUser(id) {
+            await fetch(`/api/admin/users/${id}/approve`, { method: 'PATCH', headers: getAuthHeaders() });
+            loadAllUsers();
+        }
+
+        async function togglePremium(id, makePremiumStatus) {
+            await fetch(`/api/admin/users/${id}/premium`, { 
+                method: 'PATCH', 
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ isPremium: makePremiumStatus }) 
+            });
+            loadAllUsers();
+        }
+
+        async function deleteUser(id) {
+            if(confirm('⚠️ DANGER: Are you sure you want to permanently delete this user?')) {
+                await fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+                loadAllUsers();
+            }
+        }
+    </script>
+</body>
+</html>
