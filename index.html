@@ -34,12 +34,9 @@
                 <input type="text" id="phone" placeholder="Contact Phone Number" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-rose-500">
                 <textarea id="biodata" placeholder="Write a short biodata" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-rose-500 h-24"></textarea>
                 
-                <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 space-y-3">
-                    <label class="block text-slate-800 font-bold mb-2">Upload Your Photos</label>
-                    <div><span class="text-xs font-semibold text-slate-600">Photo 1 (Main)</span><input type="file" id="photo1" accept="image/*" required class="w-full p-2 bg-white border border-slate-200 rounded"></div>
-                    <div><span class="text-xs font-semibold text-slate-600">Photo 2 (Required)</span><input type="file" id="photo2" accept="image/*" required class="w-full p-2 bg-white border border-slate-200 rounded"></div>
-                    <div><span class="text-xs font-semibold text-slate-600">Photo 3 (Required)</span><input type="file" id="photo3" accept="image/*" required class="w-full p-2 bg-white border border-slate-200 rounded"></div>
-                    <div class="pt-2 border-t border-blue-200"><span class="text-xs font-semibold text-slate-500">Photo 4 (Optional)</span><input type="file" id="photo4" accept="image/*" class="w-full p-2 bg-white border border-slate-200 rounded"></div>
+                <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    <label class="block text-slate-800 font-bold mb-2">Upload Profile Photo</label>
+                    <input type="file" id="photo1" accept="image/*" required class="w-full p-2 bg-white border border-slate-200 rounded cursor-pointer">
                 </div>
 
                 <button type="submit" class="w-full bg-rose-500 text-white font-bold py-3 rounded-lg hover:bg-rose-600 transition shadow-lg mt-2">Submit Profile</button>
@@ -82,13 +79,9 @@
                 <input type="text" id="editPhone" placeholder="Phone Number" required class="w-full p-3 bg-slate-50 border rounded-lg">
                 <textarea id="editBiodata" required class="w-full p-3 bg-slate-50 border rounded-lg h-28"></textarea>
                 
-                <div class="bg-slate-100 p-5 rounded-lg border border-slate-300 border-dashed space-y-3">
-                    <label class="block text-slate-800 font-bold mb-1">Replace Photos (Optional)</label>
-                    <p class="text-xs text-slate-500 mb-3">Leave these empty to keep current photos.</p>
-                    <div><span class="text-xs font-semibold text-slate-600">New Photo 1</span><input type="file" id="editPhoto1" accept="image/*" class="w-full p-2 bg-white border border-slate-200 rounded"></div>
-                    <div><span class="text-xs font-semibold text-slate-600">New Photo 2</span><input type="file" id="editPhoto2" accept="image/*" class="w-full p-2 bg-white border border-slate-200 rounded"></div>
-                    <div><span class="text-xs font-semibold text-slate-600">New Photo 3</span><input type="file" id="editPhoto3" accept="image/*" class="w-full p-2 bg-white border border-slate-200 rounded"></div>
-                    <div class="pt-2 border-t border-slate-300"><span class="text-xs font-semibold text-slate-500">New Photo 4 (Optional)</span><input type="file" id="editPhoto4" accept="image/*" class="w-full p-2 bg-white border border-slate-200 rounded"></div>
+                <div class="bg-slate-100 p-5 rounded-lg border border-slate-300 border-dashed">
+                    <label class="block text-slate-800 font-bold mb-1">Replace Photo (Optional)</label>
+                    <input type="file" id="editPhoto1" accept="image/*" class="w-full p-2 bg-white border border-slate-200 rounded">
                 </div>
 
                 <div class="flex gap-4 pt-4">
@@ -101,58 +94,41 @@
 
     <script>
         if (localStorage.getItem('clientToken')) showDashboard();
-        window.matchGallery = {};
 
         function getAge(dateString) { return Math.floor((new Date() - new Date(dateString)) / 31557600000); }
         function getAuthHeaders() { return { 'Authorization': `Bearer ${localStorage.getItem('clientToken')}`, 'Content-Type': 'application/json' }; }
         
-        // Image Compressor to prevent Vercel/MongoDB crashes
-       
-       // --- SUPER COMPRESSOR FOR VERCEL ---
-function fileToBase64(file) {
-    return new Promise((resolve) => {
-        if (!file) return resolve(null);
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                // Squish the image down to 500px wide to easily pass Vercel's 4.5MB limit
-                const MAX_WIDTH = 500; 
-                let width = img.width;
-                let height = img.height;
-                if (width > MAX_WIDTH) { 
-                    height = height * (MAX_WIDTH / width); 
-                    width = MAX_WIDTH; 
-                }
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                
-                // Compress to 50% quality (still looks great on phones, but file size is tiny!)
-                resolve(canvas.toDataURL('image/jpeg', 0.5)); 
-            };
-        };
-    });
-}
+        function fileToBase64(file) {
+            return new Promise((resolve) => {
+                if (!file) return resolve(null);
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 600;
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > MAX_WIDTH) { height = height * (MAX_WIDTH / width); width = MAX_WIDTH; }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.6));
+                    };
+                };
+            });
+        }
 
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const p1 = document.getElementById('photo1').files[0];
-            const p2 = document.getElementById('photo2').files[0];
-            const p3 = document.getElementById('photo3').files[0];
-            const p4 = document.getElementById('photo4').files[0];
-
             const photosArray = [];
             if (p1) photosArray.push(await fileToBase64(p1));
-            if (p2) photosArray.push(await fileToBase64(p2));
-            if (p3) photosArray.push(await fileToBase64(p3));
-            if (p4) photosArray.push(await fileToBase64(p4));
 
-            if (photosArray.length < 3) return alert("❌ You must upload at least 3 photos.");
+            if (photosArray.length === 0) return alert("❌ Please upload a photo.");
 
             const user = {
                 username: document.getElementById('regUser').value, password: document.getElementById('regPass').value,
@@ -162,7 +138,6 @@ function fileToBase64(file) {
                 photos: photosArray
             };
             
-            // USING VERCEL RELATIVE PATH
             const res = await fetch('/api/client/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(user) });
             const data = await res.json();
             alert(data.message || data.error);
@@ -206,16 +181,12 @@ function fileToBase64(file) {
             loadMatches();
         }
 
-        function swapImage(matchId, photoIndex) { document.getElementById(`main-img-${matchId}`).src = window.matchGallery[matchId][photoIndex]; }
-
         async function loadMatches() {
             const res = await fetch('/api/client/matches', { headers: getAuthHeaders() });
             if (res.status === 401 || res.status === 403) { alert("Session expired."); return logoutClient(); }
 
             const matches = await res.json();
             const container = document.getElementById('matchesContainer');
-            const isPremium = localStorage.getItem('isPremium') === 'true';
-            window.matchGallery = {};
 
             if(matches.length === 0) {
                 container.innerHTML = `<p class="text-slate-500 col-span-full text-center py-10">No matches available right now. Check back later!</p>`;
@@ -224,16 +195,8 @@ function fileToBase64(file) {
 
             container.innerHTML = matches.map(match => {
                 const age = getAge(match.dob);
-                window.matchGallery[match._id] = match.photos;
                 
-                let photoSection = `<div class="relative bg-slate-900"><img id="main-img-${match._id}" src="${match.photos[0]}" class="w-full h-72 object-contain transition-all duration-300"></div>`;
-
-                if (!isPremium) {
-                    photoSection += `<div class="bg-rose-50 text-rose-700 text-xs text-center p-3 font-bold border-b border-rose-100 uppercase tracking-wide">🔒 1 of ${match.totalPhotos} photos shown. Premium Required.</div>`;
-                } else if (match.photos.length > 1) {
-                    const thumbs = match.photos.map((p, index) => `<img src="${p}" onclick="swapImage('${match._id}', ${index})" class="w-16 h-16 object-cover rounded shadow-sm border-2 border-transparent hover:border-rose-500 cursor-pointer transition transform hover:scale-105">`).join('');
-                    photoSection += `<div class="flex gap-3 p-3 bg-slate-100 border-b overflow-x-auto justify-center">${thumbs}</div>`;
-                }
+                const photoHtml = `<div class="relative bg-slate-900"><img src="${match.photos[0]}" class="w-full h-80 object-cover border-b border-slate-200"></div>`;
 
                 const phoneHtml = match.phone.includes('Upgrade')
                     ? `<span class="bg-slate-200 text-slate-500 px-3 py-1 rounded-md text-xs font-bold shadow-sm">🔒 Phone Hidden</span>`
@@ -241,7 +204,7 @@ function fileToBase64(file) {
 
                 return `
                 <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition duration-300 border border-slate-200 flex flex-col overflow-hidden">
-                    ${photoSection}
+                    ${photoHtml}
                     <div class="p-5 flex-grow flex flex-col">
                         <h4 class="text-xl font-bold text-slate-800">${match.name}</h4>
                         <p class="text-sm text-slate-500 mb-3 font-medium">${age} yrs • ${match.gender} • 📍 ${match.city}</p>
@@ -288,20 +251,10 @@ function fileToBase64(file) {
             };
 
             const ep1 = document.getElementById('editPhoto1').files[0];
-            const ep2 = document.getElementById('editPhoto2').files[0];
-            const ep3 = document.getElementById('editPhoto3').files[0];
-            const ep4 = document.getElementById('editPhoto4').files[0];
-
             const editPhotosArray = [];
             if (ep1) editPhotosArray.push(await fileToBase64(ep1));
-            if (ep2) editPhotosArray.push(await fileToBase64(ep2));
-            if (ep3) editPhotosArray.push(await fileToBase64(ep3));
-            if (ep4) editPhotosArray.push(await fileToBase64(ep4));
 
-            if (editPhotosArray.length > 0) {
-                if (editPhotosArray.length < 3) return alert("❌ If updating photos, you must upload at least 3.");
-                updatedUser.photos = editPhotosArray;
-            }
+            if (editPhotosArray.length > 0) { updatedUser.photos = editPhotosArray; }
 
             const res = await fetch('/api/client/profile', {
                 method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(updatedUser)
@@ -310,9 +263,6 @@ function fileToBase64(file) {
             if (res.ok) {
                 alert('✅ Profile updated successfully!');
                 document.getElementById('editPhoto1').value = "";
-                document.getElementById('editPhoto2').value = "";
-                document.getElementById('editPhoto3').value = "";
-                document.getElementById('editPhoto4').value = "";
                 showDashboard(); 
             } else { alert('❌ Failed to update profile.'); }
         });
